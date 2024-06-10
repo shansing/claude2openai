@@ -27,7 +27,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const baseUrl = "http://localhost:1201" //"https://api.anthropic.com"
+const baseUrl = "http://localhost:1201/api/anthropic" //"https://api.anthropic.com"
 const listen = ":1204"
 const shansingAuthorizationHeader = true
 const shansingOnlineSearch = true
