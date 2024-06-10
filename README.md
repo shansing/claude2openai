@@ -1,3 +1,5 @@
+> 此项目系定制版本
+
 # Claude2OpenAI
 Used to convert the Claude API to OpenAI compatible API. **Easily use Claude with any OpenAI compatible client.**
 

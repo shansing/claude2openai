@@ -27,6 +27,10 @@ import (
 	"github.com/google/uuid"
 )
 
+const baseUrl = "http://localhost:1203" //"https://api.anthropic.com"
+const shansingAuthorizationHeader = true
+const shansingOnlineSearch = true
+
 func processMessages(openAIReq OpenAIRequest) []struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
@@ -46,9 +50,13 @@ func processMessages(openAIReq OpenAIRequest) []struct {
 }
 
 func createClaudeRequest(openAIReq OpenAIRequest, stream bool) ([]byte, error) {
+	var maxTokens = openAIReq.MaxTokens
+	if maxTokens <= 0 || maxTokens > 4096 {
+		maxTokens = 4096
+	}
 	return json.Marshal(map[string]interface{}{
 		"model":      openAIReq.Model,
-		"max_tokens": 4096,
+		"max_tokens": maxTokens,
 		"messages":   openAIReq.Messages,
 		"stream":     stream,
 	})
@@ -63,9 +71,16 @@ func parseAuthorizationHeader(c *gin.Context) (string, error) {
 }
 
 func sendClaudeRequest(claudeReqBody []byte, apiKey string) (*http.Response, error) {
-	req, _ := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(claudeReqBody))
+	req, _ := http.NewRequest("POST", baseUrl+"/v1/messages", bytes.NewBuffer(claudeReqBody))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", apiKey)
+	if shansingAuthorizationHeader {
+		req.Header.Set("Authorization", "Basic "+apiKey)
+	} else {
+		req.Header.Set("x-api-key", apiKey)
+	}
+	if shansingOnlineSearch {
+		req.Header.Set("X-Shansing-Online-Search", "true")
+	}
 	req.Header.Set("anthropic-version", "2023-06-01")
 
 	client := &http.Client{}

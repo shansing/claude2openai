@@ -17,7 +17,8 @@ type OpenAIRequest struct {
 		Role    string `json:"role"`
 		Content string `json:"content"`
 	} `json:"messages"`
-	Stream bool `json:"stream"`
+	Stream    bool `json:"stream"`
+	MaxTokens int  `json:"max_tokens"`
 }
 
 type ClaudeAPIResponse struct {
