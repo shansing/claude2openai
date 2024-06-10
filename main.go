@@ -28,6 +28,7 @@ import (
 )
 
 const baseUrl = "http://localhost:1203" //"https://api.anthropic.com"
+const listen = ":1204"
 const shansingAuthorizationHeader = true
 const shansingOnlineSearch = true
 
@@ -285,5 +286,5 @@ func main() {
 			"message": "Path not found",
 		})
 	})
-	r.Run(":6600")
+	r.Run(listen)
 }
