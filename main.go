@@ -31,6 +31,7 @@ const baseUrl = "http://localhost:1201/api/anthropic" //"https://api.anthropic.c
 const listen = ":1204"
 const shansingAuthorizationHeader = true
 const shansingOnlineSearch = true
+const shansingConcatUserMessage = false
 const debug = false
 
 func processMessages(openAIReq OpenAIRequest) struct {
@@ -65,9 +66,22 @@ func processMessages(openAIReq OpenAIRequest) struct {
 				openAIReq.Messages[i].Role != newMessages[len(newMessages)-1].Role {
 				//openAIReq.Messages[i].Content == "" ||
 				//openAIReq.Messages[i-1].Content == ""
+				if i == 0 && openAIReq.Messages[i].Role != "user" {
+					var fakeUserMessage struct {
+						Role    string `json:"role"`
+						Content string `json:"content"`
+					}
+					fakeUserMessage.Role = "user"
+					fakeUserMessage.Content = "."
+					newMessages = append(newMessages, fakeUserMessage)
+				}
 				newMessages = append(newMessages, openAIReq.Messages[i])
 			} else {
-				newMessages[len(newMessages)-1].Content += "\n\n" + openAIReq.Messages[i].Content
+				if shansingConcatUserMessage {
+					newMessages[len(newMessages)-1].Content += "\n\n" + openAIReq.Messages[i].Content
+				} else {
+					newMessages[len(newMessages)-1].Content = openAIReq.Messages[i].Content
+				}
 			}
 		}
 	}
