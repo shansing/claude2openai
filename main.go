@@ -32,25 +32,51 @@ const listen = ":1204"
 const shansingAuthorizationHeader = true
 const shansingOnlineSearch = true
 
-func processMessages(openAIReq OpenAIRequest) []struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+func processMessages(openAIReq OpenAIRequest) struct {
+	newMessages []struct {
+		Role    string `json:"role"`
+		Content string `json:"content"`
+	}
+	systemMessage string
 } {
+	var processMessagesResult struct {
+		newMessages []struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		}
+		systemMessage string
+	}
+
 	var newMessages []struct {
 		Role    string `json:"role"`
 		Content string `json:"content"`
 	}
+	var systemMessage = ""
 	for i := 0; i < len(openAIReq.Messages); i++ {
-		if openAIReq.Messages[i].Role == "system" && i+1 < len(openAIReq.Messages) {
-			openAIReq.Messages[i+1].Content = openAIReq.Messages[i].Content + " " + openAIReq.Messages[i+1].Content
-		} else if openAIReq.Messages[i].Role != "system" {
-			newMessages = append(newMessages, openAIReq.Messages[i])
+		if openAIReq.Messages[i].Role == "system" {
+			if systemMessage == "" {
+				systemMessage = openAIReq.Messages[i].Content
+			} else {
+				systemMessage += "\n\n" + openAIReq.Messages[i].Content
+			}
+		} else {
+			if len(newMessages) == 0 ||
+				openAIReq.Messages[i].Role != newMessages[len(newMessages)-1].Role {
+				//openAIReq.Messages[i].Content == "" ||
+				//openAIReq.Messages[i-1].Content == ""
+				newMessages = append(newMessages, openAIReq.Messages[i])
+			} else {
+				openAIReq.Messages[len(newMessages)-1].Content += "\n\n" + openAIReq.Messages[i].Content
+			}
 		}
 	}
-	return newMessages
+
+	processMessagesResult.newMessages = newMessages
+	processMessagesResult.systemMessage = systemMessage
+	return processMessagesResult
 }
 
-func createClaudeRequest(openAIReq OpenAIRequest, stream bool) ([]byte, error) {
+func createClaudeRequest(openAIReq OpenAIRequest, systemMessage string, stream bool) ([]byte, error) {
 	var maxTokens = openAIReq.MaxTokens
 	if maxTokens <= 0 || maxTokens > 4096 {
 		maxTokens = 4096
@@ -59,6 +85,7 @@ func createClaudeRequest(openAIReq OpenAIRequest, stream bool) ([]byte, error) {
 		"model":      openAIReq.Model,
 		"max_tokens": maxTokens,
 		"messages":   openAIReq.Messages,
+		"system":     systemMessage,
 		"stream":     stream,
 	})
 }
@@ -89,9 +116,10 @@ func sendClaudeRequest(claudeReqBody []byte, apiKey string) (*http.Response, err
 }
 
 func proxyToClaude(c *gin.Context, openAIReq OpenAIRequest) {
-	openAIReq.Messages = processMessages(openAIReq)
+	var processMessagesResult = processMessages(openAIReq)
+	openAIReq.Messages = processMessagesResult.newMessages
 
-	claudeReqBody, err := createClaudeRequest(openAIReq, false)
+	claudeReqBody, err := createClaudeRequest(openAIReq, processMessagesResult.systemMessage, false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to marshal request for Claude API"})
 		return
@@ -163,9 +191,10 @@ func proxyToClaude(c *gin.Context, openAIReq OpenAIRequest) {
 }
 
 func proxyToClaudeStream(c *gin.Context, openAIReq OpenAIRequest) {
-	openAIReq.Messages = processMessages(openAIReq)
+	var processMessagesResult = processMessages(openAIReq)
+	openAIReq.Messages = processMessagesResult.newMessages
 
-	claudeReqBody, err := createClaudeRequest(openAIReq, true)
+	claudeReqBody, err := createClaudeRequest(openAIReq, processMessagesResult.systemMessage, true)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to marshal request for Claude API"})
 		return
