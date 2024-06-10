@@ -31,6 +31,7 @@ const baseUrl = "http://localhost:1201/api/anthropic" //"https://api.anthropic.c
 const listen = ":1204"
 const shansingAuthorizationHeader = true
 const shansingOnlineSearch = true
+const debug = false
 
 func processMessages(openAIReq OpenAIRequest) struct {
 	newMessages []struct {
@@ -51,7 +52,7 @@ func processMessages(openAIReq OpenAIRequest) struct {
 		Role    string `json:"role"`
 		Content string `json:"content"`
 	}
-	var systemMessage = ""
+	systemMessage := ""
 	for i := 0; i < len(openAIReq.Messages); i++ {
 		if openAIReq.Messages[i].Role == "system" {
 			if systemMessage == "" {
@@ -66,7 +67,7 @@ func processMessages(openAIReq OpenAIRequest) struct {
 				//openAIReq.Messages[i-1].Content == ""
 				newMessages = append(newMessages, openAIReq.Messages[i])
 			} else {
-				openAIReq.Messages[len(newMessages)-1].Content += "\n\n" + openAIReq.Messages[i].Content
+				newMessages[len(newMessages)-1].Content += "\n\n" + openAIReq.Messages[i].Content
 			}
 		}
 	}
@@ -191,13 +192,22 @@ func proxyToClaude(c *gin.Context, openAIReq OpenAIRequest) {
 }
 
 func proxyToClaudeStream(c *gin.Context, openAIReq OpenAIRequest) {
-	var processMessagesResult = processMessages(openAIReq)
+	processMessagesResult := processMessages(openAIReq)
 	openAIReq.Messages = processMessagesResult.newMessages
+
+	if debug {
+		jsonData, _ := json.Marshal(processMessagesResult)
+		fmt.Println("processMessagesResult: ", string(jsonData))
+	}
 
 	claudeReqBody, err := createClaudeRequest(openAIReq, processMessagesResult.systemMessage, true)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to marshal request for Claude API"})
 		return
+	}
+	if debug {
+		jsonData, _ := json.Marshal(claudeReqBody)
+		fmt.Println("claudeReqBody: ", string(jsonData))
 	}
 
 	apiKey, err := parseAuthorizationHeader(c)
@@ -274,6 +284,10 @@ func handler(c *gin.Context) {
 	if err := c.BindJSON(&openAIReq); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+	if debug {
+		jsonData, _ := json.Marshal(openAIReq)
+		fmt.Println("openAIReq: ", string(jsonData))
 	}
 
 	allowModels := []string{"claude-3-haiku-20240307", "claude-3-sonnet-20240229", "claude-3-opus-20240229"}
