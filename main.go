@@ -208,7 +208,7 @@ func proxyToClaudeStream(c *gin.Context, openAIReq OpenAIRequest) {
 
 		lineStr := strings.TrimSpace(string(line))
 		if strings.HasPrefix(lineStr, "event: message_start") {
-			c.SSEvent("message", fmt.Sprintf(`{"id":"chatcmpl-%s","object":"chat.completion.chunk","created":%d,"model":"%s","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}`,
+			c.SSEvent("", fmt.Sprintf(`{"id":"chatcmpl-%s","object":"chat.completion.chunk","created":%d,"model":"%s","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}`,
 				uuid.New().String(), time.Now().Unix(), openAIReq.Model))
 			flusher.Flush()
 		} else if strings.HasPrefix(lineStr, "data:") {
@@ -219,14 +219,15 @@ func proxyToClaudeStream(c *gin.Context, openAIReq OpenAIRequest) {
 				delta := data["delta"].(map[string]interface{})
 				if delta["type"] == "text_delta" {
 					content += delta["text"].(string)
-					c.SSEvent("message", fmt.Sprintf(`{"id":"chatcmpl-%s","object":"chat.completion.chunk","created":%d,"model":"%s","choices":[{"index":0,"delta":{"content":"%s"},"finish_reason":null}]}`,
+					c.SSEvent("", fmt.Sprintf(`{"id":"chatcmpl-%s","object":"chat.completion.chunk","created":%d,"model":"%s","choices":[{"index":0,"delta":{"content":"%s"},"finish_reason":null}]}`,
 						uuid.New().String(), time.Now().Unix(), openAIReq.Model, escapeJSON(delta["text"].(string))))
 					flusher.Flush()
 				}
 			}
 		} else if strings.HasPrefix(lineStr, "event: message_stop") {
-			c.SSEvent("message", fmt.Sprintf(`{"id":"chatcmpl-%s","object":"chat.completion.chunk","created":%d,"model":"%s","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`,
+			c.SSEvent("", fmt.Sprintf(`{"id":"chatcmpl-%s","object":"chat.completion.chunk","created":%d,"model":"%s","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`,
 				uuid.New().String(), time.Now().Unix(), openAIReq.Model))
+			c.SSEvent("", `[DONE]`)
 			flusher.Flush()
 			break
 		}
