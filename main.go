@@ -31,7 +31,7 @@ const baseUrl = "http://localhost:1201/api/anthropic" //"https://api.anthropic.c
 const listen = ":1204"
 const shansingAuthorizationHeader = true
 const shansingOnlineSearch = true
-const shansingConcatUserMessage = false
+const shansingConcatUserMessage = true
 const debug = false
 
 func processMessages(openAIReq OpenAIRequest) struct {
@@ -304,11 +304,20 @@ func handler(c *gin.Context) {
 		fmt.Println("openAIReq: ", string(jsonData))
 	}
 
-	allowModels := []string{"claude-3-haiku-20240307", "claude-3-sonnet-20240229", "claude-3-opus-20240229"}
+	allowModels := []string{
+		"claude-3-5-sonnet-latest",
+		"claude-3-5-sonnet-20241022",
+		"claude-3-5-sonnet-20240620",
+		"claude-3-5-haiku-latest",
+		"claude-3-5-haiku-20241022",
+		"claude-3-opus-20240229",
+		"claude-3-sonnet-20240229",
+		"claude-3-haiku-20240307",
+	}
 
-	// Default model is claude-3-haiku-20240307
+	// Default model is claude-3-5-haiku-latest
 	if !isInSlice(openAIReq.Model, allowModels) {
-		openAIReq.Model = "claude-3-haiku-20240307"
+		openAIReq.Model = "claude-3-5-haiku-latest"
 	}
 
 	// If stream is true, proxy to Claude with stream
